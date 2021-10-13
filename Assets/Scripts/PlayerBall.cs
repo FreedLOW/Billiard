@@ -13,7 +13,12 @@ public class PlayerBall : MonoBehaviour
     private Rigidbody ballBody;
     private LineRenderer lineRenderer;
 
-    private Vector3 direction;
+    [SerializeField] private Vector3 direction;
+    private Quaternion originRotation;
+    float horizontalRotation;
+    [SerializeField] float rotationSpeed = 0.5f;
+
+    [SerializeField] private bool hitBall;
 
     [SerializeField] Transform ball;
 
@@ -22,34 +27,93 @@ public class PlayerBall : MonoBehaviour
         ballBody = GetComponent<Rigidbody>();
         lineRenderer = GetComponent<LineRenderer>();
 
+        originRotation = transform.rotation;
+
         //Invoke("AddForceToBall", 2f);
     }
 
-    private void FixedUpdate()
+    private void Update()
     {
-        DrawLine();
+        //DrawLine();
+        //ClampPosition();
+        KickBall();
     }
 
-    public void AddForceToBall(Vector3 forceDirection, float force)
+    private void ClampPosition()
+    {
+        var yPos = Mathf.Clamp(transform.position.y, 33, 34);
+        transform.position = new Vector3(transform.position.x, yPos, transform.position.z);
+    }
+
+    public void AddForceToBall(float force)
     {
         //рассчитывать направление и его примень к скорости:
         //direction = -Vector3.forward;
-        direction = forceDirection;
+        //direction = forceDirection;
 
-        //ballBody.AddForce(-Vector3.forward * forceSpeed);
+        //ballBody.AddForce(direction * (Speed * force));
         //ballBody.velocity = direction * forceSpeed;
         ballBody.velocity = direction * (Speed * force);
     }
 
+    private void KickBall()
+    {
+        if (Input.touchCount > 0)
+        {
+            DrawLine();
+
+            var touch = Input.GetTouch(0);
+            if (touch.phase == TouchPhase.Began)
+            {
+                ResetValues();
+                transform.rotation = Quaternion.identity;
+            }
+
+            if (touch.phase == TouchPhase.Moved)
+            {
+                //тут ещё настроить вращение по У, может блочит вращени по x, z:
+                horizontalRotation += touch.deltaPosition.y * rotationSpeed * Time.deltaTime;
+                Quaternion rotationY = Quaternion.AngleAxis(horizontalRotation, Vector3.up);
+                transform.rotation = originRotation * rotationY;
+            }
+
+            if (touch.phase == TouchPhase.Ended && hitBall)
+            {
+                //тут вычитывать силу от шара до точки натяга и прикладывать силу в соответствующем направлении:
+
+                //Vector3 forceDirection = (transform.position + (Vector3)touch.deltaPosition).normalized;
+
+                //правильно рассчитать силу:
+                //var force = transform.position.z + touch.deltaPosition.y;
+                AddForceToBall(4f);
+            }
+        }
+        else
+        {
+            lineRenderer.enabled = false;
+            ghostBall.position = Vector3.zero;
+        }
+}
+
     private void DrawLine()
     {
+        //выпускать луч в противоположную сторону тача:
+        //if (Input.touchCount > 0)
+        //{
+        //    Touch touch = Input.GetTouch(0);
+        //    Ray playerRay = new Ray(transform.position, -touch.position);
+        //    Debug.DrawRay(transform.position, -touch.position, Color.black);
+        //}
+
         Ray playerBallRay = new Ray(transform.position, -transform.forward);
         Ray ballRay;
         RaycastHit hit;
-        var hitBall = Hit(playerBallRay, out ballRay, out hit);
+        hitBall = Hit(playerBallRay, out ballRay, out hit);
+        direction = playerBallRay.direction;
 
         if (hitBall)
         {
+            //убрать это потом:
             Debug.DrawLine(playerBallRay.origin, hit.point);
             Debug.DrawLine(ballRay.origin, ballRay.origin + 3 * ballRay.direction);
 
@@ -86,11 +150,6 @@ public class PlayerBall : MonoBehaviour
                 deflected = new Ray(hit.point, deflect);
                 ghostBall.position = hit.point;
                 return true;
-            }
-            else
-            {
-                lineRenderer.enabled = false;
-                ghostBall.position = Vector3.zero;
             }
         }
 

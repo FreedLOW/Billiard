@@ -26,7 +26,6 @@ public class StickController : MonoBehaviour
     {
         if (collision.gameObject.GetComponent<PlayerBall>())
         {
-            playerBall.AddForceToBall(-Vector3.forward, distanceForce);
         }
     }
 
