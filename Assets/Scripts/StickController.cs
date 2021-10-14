@@ -1,20 +1,17 @@
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class StickController : MonoBehaviour
 {
-    [SerializeField] private PlayerBall playerBall;
-    [SerializeField] float followSpeed = 2f;
+    [SerializeField] private Transform ball;
 
-    private Vector3 direction;
-
-    private float distanceForce;
-    private float distance;
+    private Vector3 originPosition;
+    private Quaternion originRotation;
 
     private void Start()
     {
-        distance = Mathf.Clamp(-3 / 2, -3, 0);
+        originPosition = transform.position;
+        originRotation = transform.rotation;
     }
 
     private void Update()
@@ -22,10 +19,11 @@ public class StickController : MonoBehaviour
         GetDirection();
     }
 
-    private void OnCollisionEnter(Collision collision)
+    private void OnTriggerEnter(Collider other)
     {
-        if (collision.gameObject.GetComponent<PlayerBall>())
+        if (other.GetComponent<PlayerBall>())
         {
+            print("here ball");
         }
     }
 
@@ -34,14 +32,35 @@ public class StickController : MonoBehaviour
         if (Input.touchCount > 0)
         {
             Touch touch = Input.GetTouch(0);
+            var touchPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
-            //if (touch.phase == TouchPhase.Moved)
-            //{
-            //    transform.position = new Vector3(transform.position.x + touch.deltaPosition.x * followSpeed,
-            //                                    transform.position.y,
-            //                                    transform.position.z + touch.deltaPosition.y * followSpeed);
-            //    transform.LookAt(playerBall.transform);
-            //}
+            if (touch.phase == TouchPhase.Began)
+            {
+                ball.GetComponent<PlayerBall>().ResetValues();
+            }
+
+            if (touch.phase == TouchPhase.Moved)
+            {
+                transform.position = new Vector3(touchPosition.x,
+                                                transform.position.y,
+                                                touchPosition.z);
+
+                var yRot = ball.eulerAngles.y;
+                transform.eulerAngles = new Vector3(transform.eulerAngles.x, yRot, transform.eulerAngles.z);
+            }
+
+            if (touch.phase == TouchPhase.Ended)
+            {
+                StartCoroutine(KickAndIdleRoutine());
+            }
         }
+    }
+
+    IEnumerator KickAndIdleRoutine()
+    {
+        transform.position = Vector3.Lerp(transform.position, ball.position, 1f);
+        yield return new WaitForSeconds(0.5f);
+        transform.position = originPosition;
+        transform.rotation = originRotation;
     }
 }

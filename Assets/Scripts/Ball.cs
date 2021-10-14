@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class Ball : MonoBehaviour
 {
-    Rigidbody thisBallBody;
+    private Rigidbody thisBallBody;
+    private int minY = 31, maxY = 34;
 
     private void Start()
     {
@@ -16,15 +17,9 @@ public class Ball : MonoBehaviour
         ClampPosition();
     }
 
-    void StopVelocity()
-    {
-        thisBallBody.velocity = Vector3.zero;
-        thisBallBody.angularVelocity = Vector3.zero;
-    }
-
     private void ClampPosition()
     {
-        var yPos = Mathf.Clamp(transform.position.y, 31, 34);
-        transform.position = new Vector3(transform.position.x, yPos, transform.position.z);
+        var yPos = Mathf.Clamp(transform.position.y, minY, maxY);
+        thisBallBody.position = new Vector3(thisBallBody.position.x, yPos, thisBallBody.position.z);
     }
 }

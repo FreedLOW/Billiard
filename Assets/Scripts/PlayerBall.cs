@@ -4,52 +4,40 @@ using UnityEngine;
 
 public class PlayerBall : MonoBehaviour
 {
-    [SerializeField] private float forceSpeed = 10f;
-    [SerializeField] GameObject stick;  //его отодвигать
+    [SerializeField] private float forceSpeed;
     [SerializeField] Transform ghostBall;
-    private Transform targetBall;
 
     private const float Speed = 5f;
     private Rigidbody ballBody;
     private LineRenderer lineRenderer;
+    private int minY = 32, maxY = 34;
 
     [SerializeField] private Vector3 direction;
-    private Quaternion originRotation;
-    float horizontalRotation;
-    [SerializeField] float rotationSpeed = 0.5f;
 
     [SerializeField] private bool hitBall;
-    [SerializeField] private bool canHit;
-
-    [SerializeField] Transform ball;
 
     private void Start()
     {
         ballBody = GetComponent<Rigidbody>();
         lineRenderer = GetComponent<LineRenderer>();
-
-        originRotation = transform.rotation;
     }
 
     private void FixedUpdate()
     {
-        //DrawLine();
-        //ClampPosition();
+        ClampPosition();
         KickBall();
     }
 
     private void ClampPosition()
     {
-        var yPos = Mathf.Clamp(transform.position.y, 33, 34);
-        transform.position = new Vector3(transform.position.x, yPos, transform.position.z);
+        var yPos = Mathf.Clamp(transform.position.y, minY, maxY);
+        ballBody.position = new Vector3(ballBody.position.x, yPos, ballBody.position.z);
     }
 
     private void AddForceToBall(float force)
     {
         //рассчитывать направление и его примень к скорости:
-
-        //ballBody.AddForce(direction * (Speed * force));
-        ballBody.velocity = direction * (Speed * force);// * Time.deltaTime);
+        ballBody.velocity = direction * (Speed * force);
     }
 
     private void KickBall()
@@ -59,12 +47,12 @@ public class PlayerBall : MonoBehaviour
             DrawLine();
 
             var touch = Input.GetTouch(0);
-            var touchposition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            var worldTouchPosition = new Vector3(touchposition.x, transform.position.y, touchposition.z);
+            var touchPosition = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            var worldTouchPosition = new Vector3(touchPosition.x, transform.position.y, touchPosition.z);
+
             if (touch.phase == TouchPhase.Began)
             {
                 ResetValues();
-                transform.rotation = Quaternion.identity;
             }
 
             if (touch.phase == TouchPhase.Moved)
@@ -81,7 +69,7 @@ public class PlayerBall : MonoBehaviour
                 transform.LookAt(worldTouchPosition);
             }
 
-            if (touch.phase == TouchPhase.Ended && canHit)
+            if (touch.phase == TouchPhase.Ended && hitBall)
             {
                 //тут вычитывать силу от шара до точки натяга и прикладывать силу в соответствующем направлении:
 
@@ -96,6 +84,7 @@ public class PlayerBall : MonoBehaviour
         {
             lineRenderer.enabled = false;
             ghostBall.position = Vector3.zero;
+            hitBall = false;
         }
 }
 
@@ -113,33 +102,30 @@ public class PlayerBall : MonoBehaviour
         }
 
         Ray playerBallRay = new Ray(transform.position, -transform.forward);
-        Ray ballRay;
+        Ray ghostBallRay;
         RaycastHit hit;
-        hitBall = Hit(playerBallRay, out ballRay, out hit);
+        hitBall = Hit(playerBallRay, out ghostBallRay, out hit);
         direction = playerBallRay.direction;
-
+        
         if (hitBall && hit.collider.GetComponent<Ball>())
         {
-            canHit = true;
-
             //убрать это потом:
             Debug.DrawLine(playerBallRay.origin, hit.point, Color.red);
-            Debug.DrawLine(ballRay.origin, ballRay.origin + 3 * ballRay.direction);
+            Debug.DrawLine(ghostBallRay.origin, ghostBallRay.origin + 3 * ghostBallRay.direction);
+            Debug.DrawLine(hit.point, ghostBallRay.origin - 3 * hit.normal, Color.black);
 
             lineRenderer.SetPosition(0, transform.position);
             lineRenderer.SetPosition(1, playerBallRay.origin);
             lineRenderer.SetPosition(2, hit.point);
-            lineRenderer.SetPosition(3, ballRay.origin);
-            lineRenderer.SetPosition(4, ballRay.origin + 3 * ballRay.direction);
+            lineRenderer.SetPosition(3, ghostBallRay.origin);
+            lineRenderer.SetPosition(4, ghostBallRay.origin + 3 * ghostBallRay.direction);
+            lineRenderer.SetPosition(5, hit.point);
+            lineRenderer.SetPosition(6, ghostBallRay.origin - 3 * hit.normal);
         }
-        else
-        {
-            lineRenderer.enabled = false;
-            canHit = false;
-        }
+        else lineRenderer.enabled = false;
     }
 
-    bool Hit(Ray ray, out Ray deflected, out RaycastHit hit)
+    private bool Hit(Ray ray, out Ray deflected, out RaycastHit hit)
     {
         if(Physics.Raycast(ray, out hit))
         {
@@ -159,5 +145,6 @@ public class PlayerBall : MonoBehaviour
     {
         ballBody.velocity = Vector3.zero;
         ballBody.angularVelocity = Vector3.zero;
+        ballBody.rotation = Quaternion.identity;
     }
 }
